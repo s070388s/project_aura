@@ -169,7 +169,7 @@ void UiController::update_sensor_info_ui() {
                 snprintf(buf, sizeof(buf), "%d", static_cast<int>(lroundf(currentData.hcho)));
                 safe_label_set_text(objects.label_sensor_value, buf);
             } else if (hcho_warmup) {
-                safe_label_set_text(objects.label_sensor_value, UiText::BootDiagStarting());
+                safe_label_set_text(objects.label_sensor_value, "---");
             } else {
                 safe_label_set_text(objects.label_sensor_value, UiText::ValueMissing());
             }
