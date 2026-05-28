@@ -6,6 +6,10 @@
 
 using String = std::string;
 
+#ifndef PROGMEM
+#define PROGMEM
+#endif
+
 uint32_t millis();
 void delay(uint32_t ms);
 
