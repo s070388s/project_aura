@@ -84,6 +84,7 @@ Also watch the hands-on review:
 ![Project Aura device](docs/assets/device-hero.jpg)
 
 ## Gallery
+![Project Aura AQ 4.3 and 7 inch devices](docs/assets/aura-4-3-and-7.jpg)
 ![Assembly overview](docs/assets/device-assembly.jpg)
 ![Internal wiring](docs/assets/device-internals.jpg)
 ![Boot and live dashboard](docs/assets/device-boot-ui.jpg)
