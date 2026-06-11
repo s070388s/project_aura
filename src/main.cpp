@@ -240,6 +240,8 @@ void loop()
         if (ota_pause_requested || ota_lvgl_quiesced || lvgl_port_is_paused()) {
             lvgl_port_request_resume();
             ota_resume_pending = true;
+        } else {
+            lvgl_port_block_touch_read(Config::BACKLIGHT_WAKE_BLOCK_MS);
         }
         ota_lvgl_quiesced = false;
         ota_pause_requested = false;
