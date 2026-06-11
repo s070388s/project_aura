@@ -1705,6 +1705,7 @@ let otaRecoveryActive = false;
 let otaRecoveryProbeController = null;
 const STATE_REFRESH_VISIBLE_MS = 10000;
 const STATE_REFRESH_HIDDEN_MS = 30000;
+const OTA_PREPARE_TIMEOUT_MS = 35000;
 const OTA_RECOVERY_PROBE_TIMEOUT_MS = 1500;
 const OTA_STALE_STATE_THRESHOLD_S = 45;
 const OTA_RECONNECT_GRACE_MS = 120000;
@@ -2048,7 +2049,7 @@ async function postJson(url, payload) {
 
 async function prepareOtaUpload(fileSizeBytes) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => controller.abort(), OTA_PREPARE_TIMEOUT_MS);
   try {
     const params = new URLSearchParams();
     if (isNum(fileSizeBytes) && fileSizeBytes > 0) {

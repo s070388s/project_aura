@@ -25,6 +25,7 @@ namespace {
 
 constexpr uint16_t kHttpServerRecvWaitTimeoutS = 10;
 constexpr uint16_t kHttpServerSendWaitTimeoutS = 30;
+constexpr uint16_t kHttpServerMaxOpenSockets = 10;
 constexpr uint32_t kMultipartReadIdleTimeoutMs = 90UL * 1000UL;
 constexpr uint32_t kDrainRecvTimeoutMs = 200;
 
@@ -925,6 +926,8 @@ void EspHttpServerBackend::begin() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = port_;
     config.stack_size = 12288;
+    config.max_open_sockets = kHttpServerMaxOpenSockets;
+    config.lru_purge_enable = true;
     config.max_uri_handlers = WebServerLimits::kHttpServerMaxUriHandlers;
     config.max_resp_headers = 16;
     config.global_user_ctx = this;
