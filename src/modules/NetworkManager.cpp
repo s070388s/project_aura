@@ -794,7 +794,8 @@ void AuraNetworkManager::poll() {
             scheduleStaRetry("connect failed");
         }
     } else if (wifi_state_ == WIFI_STATE_OFF && wifi_enabled_ && wifi_retry_at_ms_ != 0) {
-        if (millis() >= wifi_retry_at_ms_) {
+        const uint32_t now_ms = millis();
+        if (static_cast<int32_t>(now_ms - wifi_retry_at_ms_) >= 0) {
             wifi_retry_at_ms_ = 0;
             startSta();
         }
@@ -1062,6 +1063,7 @@ void AuraNetworkManager::startSta() {
     bool targeted_connect = false;
     if (wifi_cold_boot_targeted_connect_active_) {
         wifi_cold_boot_targeted_connect_active_ = false;
+        // Synchronous scan is limited to the power-on cold-boot assist path.
         int32_t target_channel = 0;
         int32_t target_rssi = -128;
         uint8_t target_bssid[6] = {};

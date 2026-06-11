@@ -1,4 +1,6 @@
 CONFIG_LCD_CAM_ISR_IRAM_SAFE=y
 CONFIG_LCD_RGB_ISR_IRAM_SAFE=y
 CONFIG_ESP_WIFI_IRAM_OPT=y
+# With prebuilt Arduino/ESP-IDF libs this may be declarative only; main.cpp
+# logs a runtime warning because the actual IPC task stack can remain 1024.
 CONFIG_ESP_IPC_TASK_STACK_SIZE=4096
