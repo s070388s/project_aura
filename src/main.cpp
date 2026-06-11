@@ -19,6 +19,7 @@
 #include "core/MqttRuntimeState.h"
 #include "core/NetworkCommandQueue.h"
 #include "core/NetworkPlane.h"
+#include "core/OtaRollback.h"
 #include "core/SafeRestart.h"
 #include "core/WebRuntimeState.h"
 #include "core/Watchdog.h"
@@ -145,6 +146,7 @@ void setup()
     Logger::begin(Serial, static_cast<Logger::Level>(Config::LOG_LEVEL));
     Logger::setSerialOutputEnabled(Config::LOG_SERIAL_OUTPUT);
     Logger::setSensorsSerialOutputEnabled(Config::LOG_SERIAL_SENSORS_OUTPUT);
+    OtaRollback::logCurrentAppState();
 
     // Log IPC task stack size to verify CONFIG_IPC_TASK_STACK_SIZE is applied
     #ifdef CONFIG_ESP_IPC_TASK_STACK_SIZE
@@ -211,6 +213,7 @@ void loop()
 {
     if (WebHandlersConsumeRestartRequest()) {
         LOGI("OTA", "restarting now (main loop)");
+        OtaRollback::markValidIfPending("controlled_restart");
         WebHandlersBeginRestartShutdown();
         lvgl_port_prepare_restart();
         quiesce_network_for_restart();
@@ -308,12 +311,14 @@ void loop()
     }
     AppInit::pollDeferredRuntime();
     const uint32_t now = millis();
-    BootPolicy::markStable(now,
-                           boot_start_ms,
-                           Config::SAFE_BOOT_STABLE_MS,
-                           boot_stable,
-                           boot_count,
-                           safe_boot_stage);
+    if (BootPolicy::markStable(now,
+                               boot_start_ms,
+                               Config::SAFE_BOOT_STABLE_MS,
+                               boot_stable,
+                               boot_count,
+                               safe_boot_stage)) {
+        OtaRollback::markValidIfPending("stable_boot");
+    }
     TimeManager::PollResult time_poll = timeManager.poll(now);
     mqttManager.setSystemTimeValid(timeManager.isSystemTimeValid());
     uiController.onTimePoll(time_poll);
@@ -337,4 +342,3 @@ void loop()
     Watchdog::kick();
     delay(10);
 }
-

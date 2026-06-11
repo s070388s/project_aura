@@ -12,6 +12,7 @@
 #include <esp_ota_ops.h>
 
 #include "core/Logger.h"
+#include "core/OtaRollback.h"
 #include "web/WebOtaApiUtils.h"
 #include "web/WebResponseUtils.h"
 #include "web/WebTextUtils.h"
@@ -21,12 +22,23 @@ namespace {
 constexpr const char kApiErrorOtaBusyJson[] =
     "{\"success\":false,\"error\":\"OTA upload in progress\","
     "\"error_code\":\"OTA_BUSY\",\"ota_busy\":true}";
+constexpr const char kOtaBootPendingVerifyError[] =
+    "Firmware boot validation is still pending; wait until the device is stable before starting another OTA.";
+constexpr const char kApiErrorOtaBootPendingVerifyJson[] =
+    "{\"success\":false,"
+    "\"error\":\"Firmware boot validation is still pending; wait until the device is stable before starting another OTA.\","
+    "\"error_code\":\"OTA_BOOT_PENDING_VERIFY\"}";
 constexpr size_t kOtaAbortDrainMaxBytes = 32UL * 1024UL;
 constexpr uint32_t kOtaAbortDrainTimeoutMs = 1500;
 
 void send_ota_busy_json(WebRequest &server) {
     WebResponseUtils::sendNoStoreHeaders(server);
     server.send(503, "application/json", kApiErrorOtaBusyJson);
+}
+
+void send_ota_boot_pending_verify_json(WebRequest &server) {
+    WebResponseUtils::sendNoStoreHeaders(server);
+    server.send(409, "application/json", kApiErrorOtaBootPendingVerifyJson);
 }
 
 void send_ota_busy_upload_response(WebRequest &server) {
@@ -42,6 +54,22 @@ void send_ota_busy_upload_response(WebRequest &server) {
     }
     server.sendHeader("Connection", "close");
     server.send(503, "application/json", kApiErrorOtaBusyJson);
+    server.stopClient();
+}
+
+void send_ota_boot_pending_verify_upload_response(WebRequest &server) {
+    WebResponseUtils::sendNoStoreHeaders(server);
+    const size_t pending_body_bytes = server.pendingRequestBodyBytes();
+    if (pending_body_bytes > 0) {
+        const size_t drained =
+            server.drainPendingRequestBody(kOtaAbortDrainMaxBytes,
+                                           kOtaAbortDrainTimeoutMs);
+        LOGI("OTA", "drained %u/%u pending request bytes before boot-validation response",
+             static_cast<unsigned>(drained),
+             static_cast<unsigned>(pending_body_bytes));
+    }
+    server.sendHeader("Connection", "close");
+    server.send(409, "application/json", kApiErrorOtaBootPendingVerifyJson);
     server.stopClient();
 }
 
@@ -181,6 +209,11 @@ void handlePrepare(Runtime &runtime, bool ota_busy) {
         send_ota_busy_json(server);
         return;
     }
+    if (OtaRollback::isPendingVerify()) {
+        LOGW("OTA", "reject prepare while boot validation is pending");
+        send_ota_boot_pending_verify_json(server);
+        return;
+    }
 
     size_t expected_size = 0;
     const bool size_supplied = server.hasArg("ota_size");
@@ -230,6 +263,28 @@ void handleUpload(Runtime &runtime, bool ota_busy) {
             server.rejectUpload();
             return;
         }
+        if (OtaRollback::isPendingVerify()) {
+            LOGW("OTA", "reject upload start while boot validation is pending");
+            runtime.ota_state.beginUpload(millis());
+            fail_upload(runtime, kOtaBootPendingVerifyError);
+            server.rejectUpload();
+            return;
+        }
+
+        size_t expected_size = 0;
+        const bool size_supplied = server.hasArg("ota_size");
+        const bool size_known =
+            size_supplied && WebTextUtils::parsePositiveSize(server.arg("ota_size"), expected_size);
+        if (!size_known) {
+            const uint32_t now_ms = millis();
+            runtime.ota_state.beginUpload(now_ms);
+            fail_upload(runtime,
+                        size_supplied ? "Invalid firmware size" : "Firmware size is required");
+            server.rejectUpload();
+            LOGW("OTA", "reject upload start without valid ota_size");
+            return;
+        }
+
         if (runtime.cancel_preflight_ui) {
             runtime.cancel_preflight_ui();
         }
@@ -241,8 +296,6 @@ void handleUpload(Runtime &runtime, bool ota_busy) {
         if (WiFi.status() == WL_CONNECTED) {
             runtime.ota_state.setStartRssi(WiFi.RSSI());
         }
-        size_t expected_size = 0;
-        const bool size_known = WebTextUtils::parsePositiveSize(server.arg("ota_size"), expected_size);
         const uint32_t client_timeout_ms = runtime.upload_timeout_ms
                                                ? runtime.upload_timeout_ms(size_known ? expected_size : 0)
                                                : 0;
@@ -413,8 +466,19 @@ void handleUpdate(Runtime &runtime, bool ota_busy) {
 
     WebRequest &server = *runtime.context.server;
     if (server.uploadRejected()) {
-        send_ota_busy_upload_response(server);
-        return;
+        const WebOtaSnapshot rejected_ota = runtime.ota_state.snapshot();
+        if (rejected_ota.hasError() && rejected_ota.error == kOtaBootPendingVerifyError) {
+            send_ota_boot_pending_verify_upload_response(server);
+            if (runtime.cancel_preflight_ui) {
+                runtime.cancel_preflight_ui();
+            }
+            cleanup_after_update_response(runtime, false);
+            return;
+        }
+        if (!rejected_ota.upload_seen || !rejected_ota.hasError()) {
+            send_ota_busy_upload_response(server);
+            return;
+        }
     }
     const WebOtaSnapshot ota = runtime.ota_state.snapshot();
     if (ota_busy && ota.reboot_pending) {
