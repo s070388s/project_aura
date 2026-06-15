@@ -6,6 +6,7 @@
 [![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![YouTube Demo](https://img.shields.io/badge/YouTube-Demo-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=TNsyDGNrN-w)
 [![YouTube Review](https://img.shields.io/badge/YouTube-Review-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=1pzBqcmbWl8)
+[![YouTube Assembly](https://img.shields.io/badge/YouTube-Assembly_Guide-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=mSIv5ukjMyY)
 
 Project Aura AQ is an open-source ESP32-S3 air-quality station built for makers who want a
 polished, finished device rather than a temporary sensor prototype. You print the enclosure, install
@@ -60,6 +61,14 @@ Watch the demo:
 
 Also watch the hands-on review:
 [Project Aura review on YouTube](https://www.youtube.com/watch?v=1pzBqcmbWl8)
+
+Full assembly guide:
+[![Project Aura AQ assembly guide](https://img.youtube.com/vi/mSIv5ukjMyY/hqdefault.jpg)](https://www.youtube.com/watch?v=mSIv5ukjMyY)
+
+The assembly video walks through both supported build styles: the original 4.3" Aura AQ with classic
+Adafruit/STEMMA QT modules, and the 7" Aura XL build with the custom Aura Sensor Hub PCB. It covers
+I2C cable pin swaps, custom sensor cables, module and PCB connections, enclosure mounting, first boot
+testing, and the 180-degree screen rotation setting for the 7" build.
 
 ## Highlights
 
